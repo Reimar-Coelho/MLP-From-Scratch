@@ -24,6 +24,17 @@ A step by step series of examples that tell you how to get a development environ
 
 This is my step by step journey to complete this project.
 
+### Roadmap
+
+| Step | What was done                                                    |
+|------|------------------------------------------------------------------|
+| 1    | Setting up the environment (venv, requirements.txt, __init__.py) |
+| 2    | activations.py — ReLU, sigmoid, tanh, softmax + derivatives      |
+
 ### 1. Repo setup
 
 In the first step, i created the repository structure with the necessary files and folders, installed all the libraries, and established a stable base to work from.
+
+### 2. Activation Functions
+
+In the second step, I implemented the functions that introduce nonlinearity into the network (without them, stacking layers would be pointless—it would simply become a single linear transformation) and their derivatives (which are necessary for backpropagation).
