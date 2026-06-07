@@ -20,7 +20,7 @@ A step by step series of examples that tell you how to get a development environ
 
     pip install -r requirements.txt
 
-## Walkthrought
+## Walkthrough
 
 This is my step by step journey to complete this project.
 
