@@ -38,3 +38,7 @@ In the first step, i created the repository structure with the necessary files a
 ### 2. Activation Functions
 
 In the second step, I implemented the functions that introduce nonlinearity into the network (without them, stacking layers would be pointless—it would simply become a single linear transformation) and their derivatives (which are necessary for backpropagation).
+
+### 3. Loss function
+
+In the third step, I will create the loss functions to measure how far off the network is (cross-entropy) and calculate the gradient of the loss with respect to the logits—the starting point for backpropagation.
