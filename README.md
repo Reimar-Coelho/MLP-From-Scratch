@@ -45,4 +45,6 @@ In the second step, I implemented the functions that introduce nonlinearity into
 
 In the third step, I will create the loss functions to measure how far off the network is (cross-entropy) and calculate the gradient of the loss with respect to the logits—the starting point for backpropagation.
 
-### 4. 
+### 4. Forward pass (network.py)
+
+In the fourth step, I built the MLP class, which constructs a network with an arbitrary number of layers and performs the forward pass—passing the input through each layer until it produces the output logits. We also resolved the issue of weight initialization (which is where the infamous “all zeros” bug lies).
