@@ -26,10 +26,12 @@ This is my step by step journey to complete this project.
 
 ### Roadmap
 
-| Step | What was done                                                    |
-|------|------------------------------------------------------------------|
-| 1    | Setting up the environment (venv, requirements.txt, __init__.py) |
-| 2    | activations.py — ReLU, sigmoid, tanh, softmax + derivatives      |
+| Step | What was done                                                                 |
+|------|-------------------------------------------------------------------------------|
+| 1    | Setting up the environment (venv, requirements.txt, __init__.py)              |
+| 2    | activations.py — ReLU, sigmoid, tanh, softmax + derivatives                   |
+| 3    | cross-entropy + gradient combined with softmax                                |
+| 4    | network.py — forward pass (arbitrary number of layers, weight initialization) |
 
 ### 1. Repo setup
 
@@ -42,3 +44,5 @@ In the second step, I implemented the functions that introduce nonlinearity into
 ### 3. Loss function
 
 In the third step, I will create the loss functions to measure how far off the network is (cross-entropy) and calculate the gradient of the loss with respect to the logits—the starting point for backpropagation.
+
+### 4. 
