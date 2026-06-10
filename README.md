@@ -34,6 +34,7 @@ This is my step by step journey to complete this project.
 | 4    | network.py — forward pass (arbitrary number of layers, weight initialization) |
 | 5    | network.py — backpropagation (chain rule)                                     |
 | 6    | optimizers.py — SGD (and optionally: Momentum/Adam)                           |
+| 7    | Validation — XOR + numeric gradient check                                      |
 
 ### 1. Repo setup
 
@@ -58,3 +59,11 @@ In the fifth step, I calculated the gradient of the loss with respect to each we
 ### 6. Optimizer (optimizers.py)
 
 In the sixth step, I implemented the optimizers, which update the weights based on the backpropagation gradients. The essential algorithm is SGD (W ← W − lr · dW). I implemented SGD with optional momentum and an Adam optimizer.
+
+### 7. Validation: XOR + Gradient Check (notebooks/experimentos.ipynb)
+
+In the seventh step, before scaling up to MNIST, I validated the whole network on the smallest non-linear problem: XOR. XOR is not linearly separable, so only a network with hidden layers can solve it — a good minimal test for the forward/backward/optimizer working together.
+
+I also implemented a numeric gradient check, which is the part that actually proves backpropagation is correct. The idea is to approximate the gradient of each weight directly from the definition of a derivative, `(L(p + e) - L(p - e)) / (2e)`, and compare it against the analytic gradient produced by `backward`. If they match (difference below `1e-5`), the chain rule was implemented correctly.
+
+The result was a maximum difference of `~6e-12` between the analytic and numeric gradients (well below the `1e-5` threshold), and the network learned XOR perfectly (final loss `~0.0003`, predictions `[0 1 1 0]`). With the math validated, I had the confidence to scale the same network to MNIST.
