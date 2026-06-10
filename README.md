@@ -16,9 +16,57 @@ Requirements for the software to run
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development environment running
+Create a virtual environment and install the dependencies:
 
-    pip install -r requirements.txt
+```bash
+python -m venv .venv
+# Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+# Linux / macOS:
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### How to run
+
+All the training and analysis lives in the notebook. Open it and run every cell
+(top to bottom). MNIST is downloaded automatically on the first run and cached
+in `data/` (ignored by git).
+
+```bash
+jupyter notebook notebooks/experimentos.ipynb
+# or open it in VS Code and select the .venv kernel, then "Run All"
+```
+
+The notebook validates the network on XOR, runs the gradient check, trains the
+main model on MNIST (reaching ~97.8% test accuracy), compares configurations and
+saves the plots to `results/`.
+
+## Architecture
+
+The final model is a fully-connected MLP:
+
+```
+input 784  ->  hidden 128 (ReLU)  ->  hidden 64 (ReLU)  ->  output 10 (softmax)
+```
+
+- **Two hidden layers (128 and 64 neurons).** This meets the "at least 2 hidden
+  layers" requirement and gives the network enough capacity to reach >97% on
+  MNIST without being slow or overfitting. The funnel shape (128 -> 64) gradually
+  compresses the representation toward the 10 output classes.
+- **ReLU on the hidden layers.** It is cheap to compute and avoids the vanishing
+  gradient that saturating functions (sigmoid/tanh) suffer from, so training is
+  faster and more stable. The activation is configurable, so tanh/sigmoid can be
+  swapped in (see the experiment comparison).
+- **Softmax + cross-entropy at the output.** Softmax turns the 10 logits into a
+  probability distribution, and cross-entropy is the natural loss for
+  classification. Their gradient combines into the clean form `(probs - y)`.
+- **He weight initialization.** Weights are drawn from a normal with
+  `std = sqrt(2 / fan_in)`, calibrated for ReLU. Initializing with zeros would
+  make every neuron in a layer identical (symmetry) and the network would never
+  learn; the random init breaks that symmetry.
+- **Training:** mini-batch SGD, `lr = 0.1`, batch size 64, 15 epochs.
 
 ## Walkthrough
 
@@ -34,33 +82,44 @@ This is my step by step journey to complete this project.
 | 4    | network.py — forward pass (arbitrary number of layers, weight initialization) |
 | 5    | network.py — backpropagation (chain rule)                                     |
 | 6    | optimizers.py — SGD (and optionally: Momentum/Adam)                           |
-| 7    | Validation — XOR + numeric gradient check                                      |
-| 8    | MNIST — data loading, preprocessing and mini-batch SGD training                |
-| 9    | Results — training curves, experiment comparison and confusion matrix          |
+| 7    | Validation — XOR + numeric gradient check                                     |
+| 8    | MNIST — data loading, preprocessing and mini-batch SGD training               |
+| 9    | Results — training curves, experiment comparison and confusion matrix         |
+| 10   | Final README — how to run, architecture and decisions & difficulties          |
 
 ### 1. Repo setup
 
-In the first step, i created the repository structure with the necessary files and folders, installed all the libraries, and established a stable base to work from.
+In the first step, I created the repository structure with the necessary files and folders, set up an isolated virtual environment (`.venv`), installed the libraries and established a stable base to work from. I kept the dependencies minimal and intentional: **NumPy** for all the matrix math (the only library allowed for the core of the network), **Matplotlib** for the required loss/accuracy plots, and **scikit-learn** only for the valued extras (the confusion matrix), never for the network itself. I also added `mlp/__init__.py` so that `mlp/` becomes an importable Python package, which lets the notebook do `from mlp.network import MLP` cleanly.
 
 ### 2. Activation Functions (activations.py)
 
-In the second step, I implemented the functions that introduce nonlinearity into the network (without them, stacking layers would be pointless—it would simply become a single linear transformation) and their derivatives (which are necessary for backpropagation).
+In the second step, I implemented the functions that introduce nonlinearity into the network (without them, stacking layers would be pointless — it would simply collapse into a single linear transformation) and their derivatives, which are needed for backpropagation. I implemented **ReLU**, **sigmoid** and **tanh** for the hidden layers, and **softmax** for the output.
+
+Each derivative takes `z` (the pre-activation, before the function) rather than the activated output, because the chain rule in backprop needs `da/dz` evaluated exactly at `z`. The softmax includes a numerical-stability trick: I subtract the row maximum before the exponential, which avoids `exp()` overflow without changing the result (softmax is invariant to adding a constant). Notably, softmax has **no** separate derivative here — I deliberately combine it with the cross-entropy in the next step, because together they simplify into a much cleaner and more stable gradient. Finally, I exposed an `ACTIVATIONS` registry that maps a string to the `(function, derivative)` pair, which is what makes the activation **configurable** per layer.
 
 ### 3. Loss function (losses.py)
 
-In the third step, I will create the loss functions to measure how far off the network is (cross-entropy) and calculate the gradient of the loss with respect to the logits—the starting point for backpropagation.
+In the third step, I created the loss function to measure how far off the network is (cross-entropy) and the gradient of the loss with respect to the logits — the starting point for backpropagation. Cross-entropy measures the distance between the predicted distribution (softmax probabilities) and the true one-hot label: the more confident and correct the network is, the lower the loss; the more confident and wrong, the higher.
+
+The key decision here was to **combine softmax and cross-entropy into a single gradient** instead of deriving each one separately. The combination cancels the ugly terms of the softmax Jacobian and simplifies to `(probs - y) / N`, which is both elegant and numerically stable. I kept the loss *value* (`cross_entropy`, used to monitor and plot training) separate from the loss *gradient* (`softmax_cross_entropy_grad`, used to actually train). I also added a small `1e-12` inside the `log` to avoid `log(0) = -inf`, and divide by the batch size `N` so the loss is a per-example average, which keeps the gradient magnitude independent of batch size.
 
 ### 4. Forward pass (network.py)
 
-In the fourth step, I built the MLP class, which constructs a network with an arbitrary number of layers and performs the forward pass—passing the input through each layer until it produces the output logits. We also resolved the issue of weight initialization (which is where the infamous “all zeros” bug lies).
+In the fourth step, I built the `MLP` class, which constructs a network with an arbitrary number of layers and performs the forward pass — passing the input through each layer until it produces the output logits. I follow a `(batch, features)` convention throughout (each row is one example), so a layer is just `z = a @ W + b` followed by the activation, fully vectorized over the batch.
+
+The most important decision here was **weight initialization**. I used He initialization (`std = sqrt(2 / fan_in)`), which is calibrated for ReLU and keeps the signal variance stable across layers so values neither explode nor vanish. I explicitly did **not** initialize with zeros: if all weights start at zero, every neuron in a layer computes the same thing, receives the same gradient and evolves identically — the symmetry is never broken and the network cannot learn. The random init is what breaks that symmetry. During the forward pass I cache the intermediate `z` and `a` of each layer (backprop needs them for the chain rule), and the output layer returns **raw logits** — softmax is applied later in the loss (training) or in `predict` (inference), never twice.
 
 ### 5. Backpropagation (network.py)
 
-In the fifth step, I calculated the gradient of the loss with respect to each weight and bias in the network by backpropagating the output error to the input (backpropagation rule). This is what allows the network to learn.
+In the fifth step, I implemented backpropagation: the gradient of the loss with respect to every weight and bias, computed by propagating the output error backwards from the output to the input. This is what actually allows the network to learn.
+
+I defined `delta = dL/dz` (the gradient with respect to a layer's pre-activation). The backward pass starts from the last layer, where `delta` is exactly the combined softmax+CE gradient `(probs - y) / N` from step 3. Then, for each layer going back to front, I compute `dW = a_prev.T @ delta` (since `z = a_prev @ W + b`, the chain rule gives the input transposed times the output error) and `db = sum(delta)` over the batch (the bias is broadcast in the forward pass, so its gradient comes back summed). To move to the previous layer, I push the error back through the weights with `delta @ W.T` and multiply by the **derivative of the previous activation** evaluated at its cached `z` — forgetting that activation-derivative term is the classic bug that stops the loss from falling. I do not divide by `N` again, because the loss gradient was already averaged in step 3. I validate all of this numerically in step 7.
 
 ### 6. Optimizer (optimizers.py)
 
-In the sixth step, I implemented the optimizers, which update the weights based on the backpropagation gradients. The essential algorithm is SGD (W ← W − lr · dW). I implemented SGD with optional momentum and an Adam optimizer.
+In the sixth step, I implemented the optimizers, which update the weights from the backpropagation gradients. The essential algorithm is **SGD** (`W <- W - lr * dW`), with a configurable learning rate. I gave my SGD an optional **momentum** term, which accumulates a velocity in the direction of recent descents to smooth the path and damp oscillations. I also implemented **Adam** (a valued optional), which adapts a per-parameter learning rate from running estimates of the first moment (mean of the gradients) and second moment (mean of the squares), with bias correction so the early steps are not underestimated; it usually converges faster and is less sensitive to the initial learning rate.
+
+All optimizers share the same interface — `step(weights, biases, grads_W, grads_b)` — and update the parameters **in place**, since the lists they receive are the network's own weights. Having both SGD and Adam also gave me an extra row for the experiment comparison in step 9.
 
 ### 7. Validation: XOR + Gradient Check (notebooks/experimentos.ipynb)
 
@@ -95,3 +154,24 @@ In the ninth step, I generated the plots and analysis. The training curves (`res
 The clearest takeaway is the **learning rate**: dropping it from 0.1 to 0.01 (config B) cost over 2 points of accuracy in the same number of epochs, because the smaller steps simply hadn't converged yet. ReLU and tanh performed almost the same here; Adam reached a similar accuracy to SGD but converged faster in the early epochs. A single wider hidden layer (E) was competitive with two narrower ones.
 
 **Confusion matrix.** On the test set, the most confused pairs were `5 -> 3` (22 times), `7 -> 2`, `8 -> 3` and `9 -> 4`. These are all visually similar digits, so the mistakes are intuitive rather than random — a good sign that the network learned meaningful features. The matrix is saved at `results/confusion_matrix.png`.
+
+## Decisions and difficulties
+
+**1. What was the hardest technical decision I made, and why?**
+
+For me, the hardest decision was in the planning phase: figuring out what I should
+do and in which order to reach a result I would be happy with. Deciding which path
+to follow and which techniques to use to make sure I got the outcome I expected was
+harder than writing any single piece of the code itself.
+
+**2. What did I try that did not work, and what did I learn from it?**
+
+I tried training with a very high number of epochs, expecting a better model, but it
+barely changed the result at all. I spent a good amount of time for almost no gain.
+What I learned is that bigger numbers are not always better, past a certain point
+the model has already converged, and adding more epochs just wastes time.
+
+**3. If I were to start over, what would I do differently?**
+
+I would not do anything differently. I think I followed a good flow and got the
+result I was expecting, and for me that is already enough.
