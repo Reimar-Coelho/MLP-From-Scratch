@@ -32,19 +32,24 @@ This is my step by step journey to complete this project.
 | 2    | activations.py — ReLU, sigmoid, tanh, softmax + derivatives                   |
 | 3    | cross-entropy + gradient combined with softmax                                |
 | 4    | network.py — forward pass (arbitrary number of layers, weight initialization) |
+| 5    | network.py — backpropagation (chain rule)                                     |
 
 ### 1. Repo setup
 
 In the first step, i created the repository structure with the necessary files and folders, installed all the libraries, and established a stable base to work from.
 
-### 2. Activation Functions
+### 2. Activation Functions (activations.py)
 
 In the second step, I implemented the functions that introduce nonlinearity into the network (without them, stacking layers would be pointless—it would simply become a single linear transformation) and their derivatives (which are necessary for backpropagation).
 
-### 3. Loss function
+### 3. Loss function (losses.py)
 
 In the third step, I will create the loss functions to measure how far off the network is (cross-entropy) and calculate the gradient of the loss with respect to the logits—the starting point for backpropagation.
 
 ### 4. Forward pass (network.py)
 
 In the fourth step, I built the MLP class, which constructs a network with an arbitrary number of layers and performs the forward pass—passing the input through each layer until it produces the output logits. We also resolved the issue of weight initialization (which is where the infamous “all zeros” bug lies).
+
+### 5. Backpropagation (network.py)
+
+In the fifth step, I calculated the gradient of the loss with respect to each weight and bias in the network by backpropagating the output error to the input (backpropagation rule). This is what allows the network to learn.

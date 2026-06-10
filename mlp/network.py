@@ -6,6 +6,7 @@ b : (1, fan_out)          -> bias (broadcast over the batch).
 """
 import numpy as np
 from .activations import ACTIVATIONS, softmax
+from .losses import softmax_cross_entropy_grad
 
 
 class MLP:
@@ -60,6 +61,41 @@ class MLP:
             self.cache["a"].append(a)
 
         return a  # logits of the last layer
+    
+    def backward(self, y_true):
+        """Backpropagation: compute the gradients of every W and b.
+ 
+        Requires forward(X) to have run already (uses self.cache).
+        Returns (grads_W, grads_b), same order as self.weights.
+        """
+        n_layers = len(self.weights)
+        grads_W = [None] * n_layers
+        grads_b = [None] * n_layers
+ 
+        logits = self.cache["a"][-1]
+        # Last-layer delta: combined softmax+CE gradient = (probs - y)/N.
+        # Starting point for the whole backward pass.
+        delta = softmax_cross_entropy_grad(logits, y_true)  # (batch, n_classes)
+ 
+        # Walk the layers back to front.
+        for i in reversed(range(n_layers)):
+            a_prev = self.cache["a"][i]  # input this layer received
+            # Weight grad: (input) x (output error).
+            grads_W[i] = a_prev.T @ delta
+            # Bias grad: sum the error over the batch.
+            grads_b[i] = np.sum(delta, axis=0, keepdims=True)
+ 
+            if i > 0:
+                # Propagate the error to the previous layer: push it back
+                # through the weights (delta @ W.T), then multiply by the
+                # previous activation's derivative at z (chain rule).
+                _, act_deriv = ACTIVATIONS[self.activation_names[i - 1]]
+                z_prev = self.cache["z"][i - 1]
+                delta = (delta @ self.weights[i].T) * act_deriv(z_prev)
+ 
+        return grads_W, grads_b
+
+
 
     def predict(self, X):
         """Return the predicted class index for each example in X."""
