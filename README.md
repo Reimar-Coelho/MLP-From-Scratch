@@ -35,6 +35,7 @@ This is my step by step journey to complete this project.
 | 5    | network.py — backpropagation (chain rule)                                     |
 | 6    | optimizers.py — SGD (and optionally: Momentum/Adam)                           |
 | 7    | Validation — XOR + numeric gradient check                                      |
+| 8    | MNIST — data loading, preprocessing and mini-batch SGD training                |
 
 ### 1. Repo setup
 
@@ -67,3 +68,11 @@ In the seventh step, before scaling up to MNIST, I validated the whole network o
 I also implemented a numeric gradient check, which is the part that actually proves backpropagation is correct. The idea is to approximate the gradient of each weight directly from the definition of a derivative, `(L(p + e) - L(p - e)) / (2e)`, and compare it against the analytic gradient produced by `backward`. If they match (difference below `1e-5`), the chain rule was implemented correctly.
 
 The result was a maximum difference of `~6e-12` between the analytic and numeric gradients (well below the `1e-5` threshold), and the network learned XOR perfectly (final loss `~0.0003`, predictions `[0 1 1 0]`). With the math validated, I had the confidence to scale the same network to MNIST.
+
+### 8. MNIST — Data & Training (notebooks/experimentos.ipynb)
+
+In the eighth step, I scaled the validated network to the real task: classifying the 10 handwritten digits of MNIST. I load the dataset from the same `.npz` file keras uses (downloaded once and cached locally, ignored by git), then preprocess it: each 28x28 image is flattened into a 784-vector, pixels are normalized to `[0, 1]`, and the labels are one-hot encoded to match the softmax + cross-entropy output. Normalizing the inputs matters — feeding raw `0–255` values makes the pre-activations large and destabilizes training.
+
+For training I wrote a mini-batch loop: every epoch the data is shuffled and split into batches of 64, and for each batch I run forward -> backward -> optimizer step. Shuffling each epoch is what makes the gradient descent *stochastic*, which helps the network escape bad local patterns and generalize better.
+
+With the architecture `784 -> 128 -> 64 -> 10` (two ReLU hidden layers), plain SGD at `lr = 0.1`, batch size 64 and 15 epochs, the network reached **97.8% test accuracy** in about 8 seconds — comfortably above the 92% target.
