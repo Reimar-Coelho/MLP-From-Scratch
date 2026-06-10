@@ -33,6 +33,7 @@ This is my step by step journey to complete this project.
 | 3    | cross-entropy + gradient combined with softmax                                |
 | 4    | network.py — forward pass (arbitrary number of layers, weight initialization) |
 | 5    | network.py — backpropagation (chain rule)                                     |
+| 6    | optimizers.py — SGD (and optionally: Momentum/Adam)                           |
 
 ### 1. Repo setup
 
@@ -53,3 +54,7 @@ In the fourth step, I built the MLP class, which constructs a network with an ar
 ### 5. Backpropagation (network.py)
 
 In the fifth step, I calculated the gradient of the loss with respect to each weight and bias in the network by backpropagating the output error to the input (backpropagation rule). This is what allows the network to learn.
+
+### 6. Optimizer (optimizers.py)
+
+In the sixth step, I implemented the optimizers, which update the weights based on the backpropagation gradients. The essential algorithm is SGD (W ← W − lr · dW). I implemented SGD with optional momentum and an Adam optimizer.
