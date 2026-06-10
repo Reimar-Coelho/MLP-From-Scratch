@@ -36,6 +36,7 @@ This is my step by step journey to complete this project.
 | 6    | optimizers.py — SGD (and optionally: Momentum/Adam)                           |
 | 7    | Validation — XOR + numeric gradient check                                      |
 | 8    | MNIST — data loading, preprocessing and mini-batch SGD training                |
+| 9    | Results — training curves, experiment comparison and confusion matrix          |
 
 ### 1. Repo setup
 
@@ -76,3 +77,21 @@ In the eighth step, I scaled the validated network to the real task: classifying
 For training I wrote a mini-batch loop: every epoch the data is shuffled and split into batches of 64, and for each batch I run forward -> backward -> optimizer step. Shuffling each epoch is what makes the gradient descent *stochastic*, which helps the network escape bad local patterns and generalize better.
 
 With the architecture `784 -> 128 -> 64 -> 10` (two ReLU hidden layers), plain SGD at `lr = 0.1`, batch size 64 and 15 epochs, the network reached **97.8% test accuracy** in about 8 seconds — comfortably above the 92% target.
+
+### 9. Results (notebooks/experimentos.ipynb)
+
+In the ninth step, I generated the plots and analysis. The training curves (`results/training_curves.png`) show the loss falling steadily while train and test accuracy rise together and stay close, which means the network is learning without heavy overfitting.
+
+**Experiment comparison.** I compared five configurations, changing one factor at a time (10 epochs each, same seed):
+
+| Config | Architecture | Activation | Optimizer | Test acc |
+|--------|--------------|------------|-----------|----------|
+| A (baseline) | 784-128-64-10 | ReLU | SGD lr=0.1 | 0.9764 |
+| B | 784-128-64-10 | ReLU | SGD lr=0.01 | 0.9531 |
+| C | 784-128-64-10 | tanh | SGD lr=0.1 | 0.9755 |
+| D | 784-128-64-10 | ReLU | Adam lr=1e-3 | 0.9769 |
+| E | 784-256-10 | ReLU | SGD lr=0.1 | 0.9772 |
+
+The clearest takeaway is the **learning rate**: dropping it from 0.1 to 0.01 (config B) cost over 2 points of accuracy in the same number of epochs, because the smaller steps simply hadn't converged yet. ReLU and tanh performed almost the same here; Adam reached a similar accuracy to SGD but converged faster in the early epochs. A single wider hidden layer (E) was competitive with two narrower ones.
+
+**Confusion matrix.** On the test set, the most confused pairs were `5 -> 3` (22 times), `7 -> 2`, `8 -> 3` and `9 -> 4`. These are all visually similar digits, so the mistakes are intuitive rather than random — a good sign that the network learned meaningful features. The matrix is saved at `results/confusion_matrix.png`.
